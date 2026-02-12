@@ -102,46 +102,6 @@ pub struct FileInfo {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserPlaylist {
-    pub playlist_uuid: String,
-    pub kind: u32,
-}
-
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserPlaylistData {
-    pub playlist: UserPlaylist,
-    // pub track_count: u32,
-}
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserPlaylistItem {
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub data: UserPlaylistData,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserPlaylistTab {
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub items: Vec<UserPlaylistItem>,
-}
-
-#[derive(Deserialize)]
-pub struct UserPlaylistsMetaResult {
-    pub tabs: Vec<UserPlaylistTab>,
-}
-
-#[derive(Deserialize)]
-pub struct UserPlaylistsMeta {
-    pub result: UserPlaylistsMetaResult,
-}
-
-#[derive(Deserialize)]
 pub struct Owner {
     pub login: String,
 }
@@ -211,16 +171,6 @@ pub struct ArtistMeta {
     pub result: ArtistMetaResult,
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Favourites {
-    pub playlist_uuid: String,
-}
-
-#[derive(Deserialize)]
-pub struct UserFavouritesMeta {
-    pub favorites: Favourites,
-}
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OtherUserPlaylistMetaResult {

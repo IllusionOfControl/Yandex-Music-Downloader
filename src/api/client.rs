@@ -160,26 +160,6 @@ impl YandexMusicClient {
         Ok(meta.result.download_info)
     }
 
-    pub fn get_user_playlists_meta(&mut self) -> Result<UserPlaylistsMetaResult, Box<dyn Error>> {
-        let url = format!(
-            "{}/landing-blocks/collection/playlists-liked-and-playlists-created", BASE_URL);
-
-        // Not sure what the max is.
-        let params: HashMap<&str, &str> = HashMap::from([
-            ("count", "1000"),
-        ]);
-
-        let resp = self.c.get(url)
-            .header(AUTHORIZATION, &self.token)
-            .header("X-Yandex-Music-Client", YANDEX_USER_AGENT)
-            .query(&params)
-            .send()?;
-
-        resp.error_for_status_ref()?;
-        let meta: UserPlaylistsMeta = resp.json()?;
-        Ok(meta.result)
-    }
-
     pub fn get_other_user_playlist_meta(&mut self, id: &str) -> Result<OtherUserPlaylistMetaResult, Box<dyn Error>> {
         let url = format!("{}/playlist/{}", BASE_URL, id);
 
@@ -219,19 +199,6 @@ impl YandexMusicClient {
 
         let meta: ArtistMeta = resp.json()?;
         Ok(meta.result)
-    }
-
-    pub fn get_user_favourites_meta(&mut self) -> Result<UserFavouritesMeta, Box<dyn Error>> {
-        let url = format!("{}/landing/block/likes-and-history", BASE_URL);
-
-        let resp = self.c.get(url)
-            .header(AUTHORIZATION, &self.token)
-            .header("X-Yandex-Music-Client", YANDEX_USER_AGENT)
-            .send()?;
-
-        resp.error_for_status_ref()?;
-        let meta: UserFavouritesMeta = resp.json()?;
-        Ok(meta)
     }
 
     pub fn get_file_resp(&mut self, url: &str, with_range: bool) -> Result<ReqwestResp, ReqwestErr> {

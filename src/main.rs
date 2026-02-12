@@ -15,7 +15,7 @@ use ctr::cipher::{KeyIvInit, StreamCipher};
 use indicatif::{ProgressBar, ProgressStyle};
 use metaflac::{Tag as FlacTag, Error as FlacError};
 use metaflac::block::PictureType::CoverFront as FLACCoverFront;
-use id3::{Content, Error as ID3Error, Frame, Tag as Mp3Tag, TagLike, Version};
+use id3::{Error as ID3Error, Tag as Mp3Tag, TagLike, Version};
 use id3::frame::{Picture as Mp3Image};
 use id3::frame::PictureType::CoverFront as MP3CoverFront;
 use mp4ameta::{Tag as Mp4Tag, Data as Mp4Data, Fourcc, Error as MP4Error};
@@ -650,41 +650,14 @@ fn process_album(c: &mut YandexMusicClient, config: &Config, album_id: &str, tra
     Ok(())
 }
 
-fn select_user_playlist(meta: UserPlaylistsMetaResult, playlist_id: &str) -> Option<UserPlaylist> {
-    for tab in meta.tabs.into_iter().filter(|t| t.type_field == "created_playlist_tab") {
-        for item in tab.items.into_iter().filter(|i| i.type_field == "liked_playlist_item") {
-            if item.data.playlist.kind.to_string() == playlist_id {
-                return Some(item.data.playlist);
-            }
-        }
-    }
-
-    None
-}
-
 // Compiler thinks playlist_uuid isn't assigned.
 #[allow(unused_assignments)]
-fn process_user_playlist(c: &mut YandexMusicClient, config: &Config, login: &str, playlist_id: &str) -> Result<(), Box<dyn Error>> {
+fn process_user_playlist(c: &mut YandexMusicClient, config: &Config, login: &str) -> Result<(), Box<dyn Error>> {
     let mut playlist_uuid = String::new();
-
-    // Owned by authed user.
-    // if login == c.login {
-    //     if playlist_id == "3" {
-    //         let favs_meta = c.get_user_favourites_meta()?;
-    //         playlist_uuid = favs_meta.favorites.playlist_uuid;
-    //     } else {
-    //         let user_meta = c.get_user_playlists_meta()?;
-    //         let playlist = select_user_playlist(user_meta, playlist_id)
-    //             .ok_or("playlist is empty or not present in user's playlists")?;
-    //         playlist_uuid = playlist.playlist_uuid;
-    //     }
-    // } else {
-
 
     let playlist = c.get_other_user_playlist_meta(login)?;
     if playlist.visibility.to_lowercase() != "public" {
-        return Err(
-            "playlist is private and is not owned by the authenticated user".into())
+        return Err("playlist is private".into())
     }
     playlist_uuid = playlist.playlist_uuid;
 
@@ -797,7 +770,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             // album_id | track_id
             0 => process_album(&mut c, &config, &first_group, &second_group, None),
             // login | playlist_id
-            1 => process_user_playlist(&mut c, &config, &first_group, &second_group),
+            1 => process_user_playlist(&mut c, &config, &first_group),
             // artist_id
             2 => process_artist_albums(&mut c, &config, &first_group),
             _ => Ok(()),
