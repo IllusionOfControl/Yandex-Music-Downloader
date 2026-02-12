@@ -14,7 +14,7 @@ use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT, AUTHORIZATION, RANGE};
 
 const BASE_URL: &str = "https://api.music.yandex.net";
 const SECRET: &str = "kzqU4XhfCaY6B6JTHODeq5";
-const YANDEX_USER_AGENT: &str = "YandexMusicDesktopAppWindows/5.23.2";
+const YANDEX_USER_AGENT: &str = "YandexMusicDesktopAppWindows/5.86.0";
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -180,8 +180,8 @@ impl YandexMusicClient {
         Ok(meta.result)
     }
 
-    pub fn get_other_user_playlist_meta(&mut self, username: &str, id: &str) -> Result<OtherUserPlaylistMetaResult, Box<dyn Error>> {
-        let url = format!("{}/users/{}/playlists/{}", BASE_URL, username, id);
+    pub fn get_other_user_playlist_meta(&mut self, id: &str) -> Result<OtherUserPlaylistMetaResult, Box<dyn Error>> {
+        let url = format!("{}/playlist/{}", BASE_URL, id);
 
         let resp = self.c.get(url)
             .header(AUTHORIZATION, &self.token)

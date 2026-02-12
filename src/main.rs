@@ -15,7 +15,7 @@ use ctr::cipher::{KeyIvInit, StreamCipher};
 use indicatif::{ProgressBar, ProgressStyle};
 use metaflac::{Tag as FlacTag, Error as FlacError};
 use metaflac::block::PictureType::CoverFront as FLACCoverFront;
-use id3::{Error as ID3Error, Tag as Mp3Tag, TagLike, Version};
+use id3::{Content, Error as ID3Error, Frame, Tag as Mp3Tag, TagLike, Version};
 use id3::frame::{Picture as Mp3Image};
 use id3::frame::PictureType::CoverFront as MP3CoverFront;
 use mp4ameta::{Tag as Mp4Tag, Data as Mp4Data, Fourcc, Error as MP4Error};
@@ -37,9 +37,9 @@ const IS_WINDOWS: bool = true;
 const IS_WINDOWS: bool = false;
 
 const REGEX_STRINGS: [&str; 3] = [
-    r#"^https://music\.yandex\.(?:by|kz|ru|com)/album/(\d+)(?:/track/(\d+)(?:\?.+)?)?$"#,
-    r#"^https://music\.yandex\.(?:by|kz|ru|com)/users/(.+)/playlists/(\d+)(?:\?.+)?$"#,
-    r#"^https://music\.yandex\.(?:by|kz|ru|com)/artist/(\d+)(?:/albums)?(?:\?.+)?$"#,
+    r#"^https://music\.yandex\.(?:by|kz|ru)/album/(\d+)(?:/track/(\d+)(?:\?.+)?)?$"#,
+    r#"^https://music\.yandex\.(?:by|kz|ru)/playlists/((?:[a-z]{2}\.|)[a-z\d]{8}-[a-z\d]{4}-[a-z\d]{4}-[a-z\d]{4}-[a-z\d]{12})$"#,
+    r#"^https://music\.yandex\.(?:by|kz|ru)/artist/(\d+)(?:/albums)?(?:\?.+)?$"#,
 ];
 
 type Aes128Ctr = ctr::Ctr128BE<Aes128>; // AES-128 in CTR mode
@@ -106,7 +106,9 @@ fn parse_config() -> Result<Config, Box<dyn Error>> {
     config.format = args.format.unwrap_or(config.format);
     config.out_path = args.out_path.unwrap_or(config.out_path);
 
-    config.out_path.push("Yandex Music downloads");
+    if config.out_path.as_os_str().is_empty() {
+        config.out_path.push("Yandex Music downloads");
+    }
 
     config.format_str = resolve_format(config.format)
         .ok_or("format must be between 1 and 4")?;
@@ -254,7 +256,7 @@ fn parse_specs(codec: &str, bitrate: u16) -> Option<(String, String)> {
             "FLAC".to_string(),
             ".flac".to_string()
         )),
-        "mp3-mp4" => Some((
+        "mp3" | "mp3-mp4" => Some((
             format!("{} Kbps MP3", bitrate),
             ".mp3".to_string()
         )),
@@ -374,14 +376,29 @@ fn write_mp3_tags(track_path: &PathBuf, meta: &ParsedAlbumMeta) -> Result<(), ID
         tag.set_year(year as i32);
     }
 
-    if let Some(lyrics) = &meta.untimed_lyrics {
-        tag.set_text("USLT", lyrics);
-    }
+    // InvalidInput: Frame with ID USLT/SYLT and content type Text can not be written as valid ID3
 
-    if let Some(lyrics) = &meta.timed_lyrics {
-        tag.set_text("SYLT", lyrics);
-    }
-
+    // if let Some(lyrics) = &meta.untimed_lyrics {
+    //     tag.add_frame(Frame::with_content(
+    //         "USLT",
+    //         Content::Lyrics(id3::frame::Lyrics {
+    //             lang: "".to_string(),
+    //             description: "".to_string(),
+    //             text: lyrics.to_string(),
+    //         }),
+    //     ));
+    // }
+    //
+    // if let Some(lyrics) = &meta.timed_lyrics {
+    //     tag.add_frame(Frame::with_content(
+    //         "SYLT",
+    //         Content::Lyrics(id3::frame::Lyrics {
+    //             lang: "".to_string(),
+    //             description: "".to_string(),
+    //             text: lyrics.to_string(),
+    //         }),
+    //     ));
+    // }
 
     tag.write_to_path(track_path, Version::Id3v24)?;
     Ok(())
@@ -422,7 +439,7 @@ fn write_mp4_tags(track_path: &PathBuf, meta: &ParsedAlbumMeta) -> Result<(), MP
 fn write_tags(track_path: &PathBuf, codec: &str, meta: &ParsedAlbumMeta) -> Result<(), Box<dyn Error>> {
     match codec {
         "flac-mp4" => write_flac_tags(track_path, meta)?,
-        "mp3-mp4" => write_mp3_tags(track_path, meta)?,
+        "mp3" | "mp3-mp4" => write_mp3_tags(track_path, meta)?,
         "aac-mp4" | "he-aac-mp4" => write_mp4_tags(track_path, meta)?,
         _ => {},
     }
@@ -505,8 +522,10 @@ fn mux(in_path: &PathBuf, out_path: &PathBuf, ffmpeg_path: &PathBuf ) -> Result<
 
 fn process_track(c: &mut YandexMusicClient, track_id: &str, meta: &mut ParsedAlbumMeta, config: &Config, album_path: &PathBuf) -> Result<(), Box<dyn Error>> {
     let info = c.get_file_info(track_id, &config.format_str)?;
-    let (specs, file_ext) = parse_specs(&info.codec, info.bitrate)
-        .ok_or(format!("the api returned an unknown codec: {}", info.codec))?;
+    let codec =  info.codec;
+
+    let (specs, file_ext) = parse_specs(&codec, info.bitrate)
+        .ok_or(format!("the api returned an unknown codec: {}", codec))?;
 
     if meta.is_track_only {
         println!("Track 1 of 1: {} - {}", meta.title, specs);
@@ -561,7 +580,7 @@ fn process_track(c: &mut YandexMusicClient, track_id: &str, meta: &mut ParsedAlb
         }
     }
 
-    write_tags(&track_path, &info.codec, &meta)?;
+    write_tags(&track_path, &codec, &meta)?;
 
     Ok(())
 
@@ -649,24 +668,25 @@ fn process_user_playlist(c: &mut YandexMusicClient, config: &Config, login: &str
     let mut playlist_uuid = String::new();
 
     // Owned by authed user.
-    if login == c.login {
-        if playlist_id == "3" {
-            let favs_meta = c.get_user_favourites_meta()?;
-            playlist_uuid = favs_meta.favorites.playlist_uuid;
-        } else {
-            let user_meta = c.get_user_playlists_meta()?;
-            let playlist = select_user_playlist(user_meta, playlist_id)
-                .ok_or("playlist is empty or not present in user's playlists")?;
-            playlist_uuid = playlist.playlist_uuid;
-        }
-    } else {
-        let playlist = c.get_other_user_playlist_meta(login, playlist_id)?;
-        if playlist.visibility.to_lowercase() != "public" {
-            return Err(
-                "playlist is private and is not owned by the authenticated user".into())
-        }
-        playlist_uuid = playlist.playlist_uuid;
+    // if login == c.login {
+    //     if playlist_id == "3" {
+    //         let favs_meta = c.get_user_favourites_meta()?;
+    //         playlist_uuid = favs_meta.favorites.playlist_uuid;
+    //     } else {
+    //         let user_meta = c.get_user_playlists_meta()?;
+    //         let playlist = select_user_playlist(user_meta, playlist_id)
+    //             .ok_or("playlist is empty or not present in user's playlists")?;
+    //         playlist_uuid = playlist.playlist_uuid;
+    //     }
+    // } else {
+
+
+    let playlist = c.get_other_user_playlist_meta(login)?;
+    if playlist.visibility.to_lowercase() != "public" {
+        return Err(
+            "playlist is private and is not owned by the authenticated user".into())
     }
+    playlist_uuid = playlist.playlist_uuid;
 
     let meta = c.get_playlist_meta(&playlist_uuid)?;
     if !meta.available {
