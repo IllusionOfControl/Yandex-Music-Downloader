@@ -1,6 +1,7 @@
 use clap::Parser;
 use std::error::Error;
 use std::fs;
+use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
 
@@ -35,22 +36,31 @@ fn bootstrap() -> Result<Settings, Box<dyn Error>> {
         .filter(|t| !t.trim().is_empty())
         .ok_or("Token is missing! Please set it in args or config.toml")?;
 
-    let format_raw = cli.format.unwrap_or(file_cfg.format);
+    let format_raw = cli.format
+        .or(file_cfg.format)
+        .unwrap_or(4);
 
-    let format = DownloadFormat::from_u8(format_raw).ok_or("Invalid format! Use 1-4.")?;
+    let format = DownloadFormat::from_u8(format_raw)
+        .ok_or("Invalid format! Use 1-4.")?;
 
-    let out_path = cli.out_path.unwrap_or(file_cfg.out_path);
+    let out_path = cli.out_path
+        .or(file_cfg.out_path)
+        .unwrap_or(PathBuf::from("downloads"));
 
     let ffmpeg_path = resolve_ffmpeg_path(file_cfg.ffmpeg_path, &exe_path);
 
-    let album_template = cli.album_template.unwrap_or(file_cfg.album_template);
-    let track_template = cli.track_template.unwrap_or(file_cfg.track_template);
+    let album_template = cli.album_template
+        .or(file_cfg.album_template)
+        .unwrap_or("{album_artist} - {album_title}".to_string());
+    let track_template = cli.track_template
+        .or(file_cfg.track_template)
+        .unwrap_or("{track_num_pad}. {title}".to_string());
 
-    let keep_covers = cli.keep_covers || file_cfg.keep_covers;
-    let write_covers = cli.write_covers || file_cfg.write_covers;
-    let get_original_covers = cli.get_original_covers || file_cfg.get_original_covers;
-    let write_lyrics = cli.write_lyrics || file_cfg.write_lyrics;
-    let sleep = cli.sleep || file_cfg.sleep;
+    let keep_covers = cli.keep_covers || file_cfg.keep_covers.unwrap_or(false);
+    let write_covers = cli.write_covers || file_cfg.write_covers.unwrap_or(false);
+    let get_original_covers = cli.get_original_covers || file_cfg.get_original_covers.unwrap_or(false);
+    let write_lyrics = cli.write_lyrics || file_cfg.write_lyrics.unwrap_or(false);
+    let sleep = cli.sleep || file_cfg.sleep.unwrap_or(false);
 
     let processed_url_strings = utils::process_urls(&cli.urls)?;
     let mut media_links = Vec::new();
