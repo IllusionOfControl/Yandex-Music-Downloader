@@ -205,17 +205,18 @@ fn process_track(
         return Err(format!("Decryption failed: {}", e).into());
     }
 
-    fs::write(&final_path, &track_buff)?;
+    let tmp_dec_path = track_path_base.with_extension("dec");
+    fs::write(&tmp_dec_path, &track_buff)?;
 
     drop(track_buff);
 
     println!("Muxing...");
-    if let Err(e) = mux(&final_path, &final_path, &settings.ffmpeg_path) {
+    if let Err(e) = mux(&tmp_dec_path, &final_path, &settings.ffmpeg_path) {
         let _ = fs::remove_file(file_ext);
         return Err(format!("FFmpeg muxing failed: {}", e).into());
     }
 
-    let _ = fs::remove_file(&final_path);
+    fs::remove_file(&tmp_dec_path)?;
 
     if let Some(has_lyrics) = meta.lyrics_avail {
         if let Ok(lyrics_text) = get_lyrics_text(c, track_id, has_lyrics) {
