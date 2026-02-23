@@ -1,69 +1,74 @@
 use clap::Parser;
-use std::path::PathBuf;
 use serde::Deserialize;
+use std::path::PathBuf;
 
-#[derive(Parser)]
+
+#[derive(Parser, Debug)]
 #[command(name = "Yandex Music Downloader", version = env!("CARGO_PKG_VERSION"))]
-pub struct Args {
-    #[clap(short, long, help = "1 = AAC 64, 2 = AAC 192, 3 = AAC 256 / MP3 320, 4 = FLAC.")]
+pub struct CliArgs {
+    #[clap(short, long)]
+    pub token: Option<String>,
+
+    #[clap(short, long)]
     pub format: Option<u8>,
 
-    #[clap(short, long, help = "Get original covers for tracks; may be large sometimes. true = orignal, false = 1000x1000.")]
+    #[clap(short, long)]
     pub get_original_covers: bool,
 
-    #[clap(short, long, help = "Keep covers in album folder.")]
+    #[clap(short, long)]
     pub keep_covers: bool,
 
-    #[clap(short, long, help = "Output path.")]
+    #[clap(short, long)]
     pub out_path: Option<PathBuf>,
 
-    #[clap(short, long, help = "Sleep between each track processing to prevent potential rate-limiting.")]
+    #[clap(short, long)]
     pub sleep: bool,
 
-    #[clap(long, help = "Write covers to tracks.")]
+    #[clap(long)]
     pub write_covers: bool,
 
-    #[clap(long, help = "Write timed lyrics when available.")]
+    #[clap(long)]
     pub write_lyrics: bool,
+
+    #[clap(long)]
+    pub album_template: Option<String>,
+
+    #[clap(long)]
+    pub track_template: Option<String>,
 
     #[clap(short, long, num_args = 1.., required = true)]
     pub urls: Vec<String>,
 }
 
-#[derive(Deserialize)]
-pub struct Config {
-    pub album_template: String,
-    pub format: u8,
-    #[serde(skip_deserializing)]
-    pub ffmpeg_path : PathBuf,
-    #[serde(skip_deserializing)]
-    pub format_str: String,
+#[derive(Deserialize, Debug)]
+pub struct FileConfig {
+    pub token: Option<String>,
+    pub format: Option<u8>,
+    pub out_path: Option<PathBuf>,
     pub keep_covers: bool,
-    pub out_path: PathBuf,
     pub get_original_covers: bool,
-    pub token: String,
-    pub track_template: String,
-    pub sleep: bool,
-    #[serde(skip_deserializing)]
-    pub urls: Vec<String>,
-    pub use_ffmpeg_env_var: bool,
     pub write_covers: bool,
     pub write_lyrics: bool,
+    pub sleep: bool,
+    pub album_template: String,
+    pub track_template: String,
+    pub ffmpeg_path: Option<PathBuf>,
 }
 
-pub struct ParsedAlbumMeta {
-    pub album_title: String,
-    pub album_artist: String,
-    pub artist: String,
-    pub cover_data: Vec<u8>,
-    pub genre: Option<String>,
-    pub lyrics_avail: Option<bool>,
-    pub is_track_only: bool,
-    pub label: String,
-    pub title: String,
-    pub timed_lyrics: Option<String>,
-    pub untimed_lyrics: Option<String>,
-    pub track_num: u16,
-    pub track_total: u16,
-    pub year: Option<u16>,
+impl Default for FileConfig {
+    fn default() -> Self {
+        Self{
+            token: None,
+            format: Some(4),
+            out_path: Some(PathBuf::from("Yandex Music downloads")),
+            ffmpeg_path: None,
+            album_template: "{album_artist} - {album_title}".to_string(),
+            track_template: "{track_num_pad}. {title}".to_string(),
+            keep_covers: false,
+            write_covers: false,
+            get_original_covers: false,
+            write_lyrics: false,
+            sleep: false,
+        }
+    }
 }
