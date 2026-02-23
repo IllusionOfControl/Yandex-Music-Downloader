@@ -43,8 +43,9 @@ pub struct CliArgs {
 #[derive(Deserialize, Debug)]
 pub struct FileConfig {
     pub token: Option<String>,
-    pub format: Option<u8>,
-    pub out_path: Option<PathBuf>,
+    pub ffmpeg_path: Option<PathBuf>,
+    pub format: u8,
+    pub out_path: PathBuf,
     pub keep_covers: bool,
     pub get_original_covers: bool,
     pub write_covers: bool,
@@ -52,16 +53,15 @@ pub struct FileConfig {
     pub sleep: bool,
     pub album_template: String,
     pub track_template: String,
-    pub ffmpeg_path: Option<PathBuf>,
 }
 
 impl Default for FileConfig {
     fn default() -> Self {
         Self{
             token: None,
-            format: Some(4),
-            out_path: Some(PathBuf::from("Yandex Music downloads")),
             ffmpeg_path: None,
+            format: 4,
+            out_path: PathBuf::from("Yandex Music downloads"),
             album_template: "{album_artist} - {album_title}".to_string(),
             track_template: "{track_num_pad}. {title}".to_string(),
             keep_covers: false,
