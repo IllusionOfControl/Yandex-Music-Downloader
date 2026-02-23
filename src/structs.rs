@@ -6,7 +6,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(name = "Yandex Music Downloader", version = env!("CARGO_PKG_VERSION"))]
 pub struct CliArgs {
-    #[clap(short, long)]
+    #[clap(short, long, required = true)]
     pub token: Option<String>,
 
     #[clap(short, long)]
@@ -40,19 +40,19 @@ pub struct CliArgs {
     pub urls: Vec<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 pub struct FileConfig {
     pub token: Option<String>,
     pub ffmpeg_path: Option<PathBuf>,
-    pub format: u8,
-    pub out_path: PathBuf,
-    pub keep_covers: bool,
-    pub get_original_covers: bool,
-    pub write_covers: bool,
-    pub write_lyrics: bool,
-    pub sleep: bool,
-    pub album_template: String,
-    pub track_template: String,
+    pub format: Option<u8>,
+    pub out_path: Option<PathBuf>,
+    pub keep_covers: Option<bool>,
+    pub get_original_covers: Option<bool>,
+    pub write_covers: Option<bool>,
+    pub write_lyrics: Option<bool>,
+    pub sleep: Option<bool>,
+    pub album_template: Option<String>,
+    pub track_template: Option<String>,
 }
 
 impl Default for FileConfig {
@@ -60,15 +60,15 @@ impl Default for FileConfig {
         Self{
             token: None,
             ffmpeg_path: None,
-            format: 4,
-            out_path: PathBuf::from("Yandex Music downloads"),
-            album_template: "{album_artist} - {album_title}".to_string(),
-            track_template: "{track_num_pad}. {title}".to_string(),
-            keep_covers: false,
-            write_covers: false,
-            get_original_covers: false,
-            write_lyrics: false,
-            sleep: false,
+            format: None,
+            out_path: None,
+            album_template: None,
+            track_template: None,
+            keep_covers: None,
+            write_covers: None,
+            get_original_covers: None,
+            write_lyrics: None,
+            sleep: None,
         }
     }
 }
